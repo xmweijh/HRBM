@@ -1,68 +1,61 @@
 import { getToken, setToken, removeToken, setTimeStamp } from '@/utils/auth'
 import { login, getUserInfo, getUserDetailById } from '@/api/user'
+import { resetRouter } from '@/router'
 // 状态
-// 初始化的时候从缓存中读取状态 并赋值到初始化的状态上
-// Vuex的持久化 如何实现 ？ Vuex和前端缓存相结合
 const state = {
-  token: getToken(), // 设置token初始状态   token持久化 => 放到缓存中
-  userInfo: {} // 定义一个空的对象 不是null 因为后边要开发userInfo的属性给别人用  userInfo.name
+  token: getToken(), // 设置token为共享状态 初始化vuex的时候 就先从缓存中读取
+  userInfo: {} // 这里定义一个空对象 为什么要定义空对象
 }
-// 修改状态
 const mutations = {
-  // 设置Token
   setToken(state, token) {
-    // 更改state中的token
-    state.token = token
-    // 缓存到本地
+    state.token = token // 将数据设置给vuex
+    // 同步给缓存
     setToken(token)
   },
-  // 删除缓存
   removeToken(state) {
-    // 情况state和缓存中的token
-    state.token = null
-    removeToken()
+    state.token = null // 将vuex的数据置空
+    removeToken() // 同步到缓存
   },
-  // 设置用户信息
-  setUserInfo(state, userInfo) {
-    state.userInfo = { ...userInfo } // 用 浅拷贝的方式去赋值对象 因为这样数据更新之后，才会触发组件的更新
+  setUserInfo(state, result) {
+    // 更新一个对象
+    state.userInfo = result // 这样是响应式
+    // state.userInfo = { ...result } // 这样也是响应式 属于浅拷贝
+    // state.userInfo['username'] = result // 这样才不是响应式
   },
-  // 删除用户信息
-  reomveUserInfo(state) {
+  removeUseInfo(state) {
     state.userInfo = {}
   }
 }
-// 执行异步
 const actions = {
-  // 定义login action  也需要参数 调用action时 传递过来的参数
-  // 定义login action  也需要参数 调用action时 传递过来的参数
-  // async 标记的函数其实就是一个异步函数 -> 本质是还是 一个promise
   async login(context, data) {
-    // 经过响应拦截器的处理之后 这里的result实际上就是 token
-    const result = await login(data) // 实际上就是一个promise  result就是执行的结果
-    // axios默认给数据加了一层data
-    // 表示登录接口调用成功 也就是意味着你的用户名和密码是正确的
-    // 现在有用户token
-    // actions 修改state 必须通过mutations
-    context.commit('setToken', result)
-    // 写入时间戳
-    setTimeStamp() // 将当前的最新时间写入缓存
+    // 调用api接口
+    const result = await login(data) // 拿到token
+    context.commit('setToken', result) // 设置token
+    // 拿到token说明登录成功
+    setTimeStamp() // 设置当前的时间戳
   },
-  // 获取用户资料action
   async getUserInfo(context) {
-    const result = await getUserInfo() // result就是用户的基本资料
-    const baseInfo = await getUserDetailById(result.userId) // 为了获取头像
-    const baseResult = { ...result, ...baseInfo } // 将两个接口结果合并
-    // 此时已经获取到了用户的基本资料 迫不得已 为了头像再次调用一个接口
-    context.commit('setUserInfo', baseResult) // 提交mutations
-    // 加一个点睛之笔  这里这一步，暂时用不到，但是请注意，这给我们后边会留下伏笔
-    return baseResult
+    const result = await getUserInfo()
+    // 获取用户的详情 用户的详情数据
+    const baseInfo = await getUserDetailById(result.userId)
+    context.commit('setUserInfo', { ...result, ...baseInfo }) // 提交到mutations
+    return result // 这里为什么要return呢 这里是给我们后期做权限的时候 留下的伏笔
   },
-  // 登出的action
-  async logout(context) {
+  // 登出操作
+  logout(context) {
     // 删除token
-    context.commit('removeToken') // 不仅仅删除了vuex中的 还删除了缓存中的
+    context.commit('removeToken')
     // 删除用户资料
-    context.commit('removeUserInfo') // 删除用户信息
+    context.commit('removeUseInfo')
+    // 重置路由
+    resetRouter() // 重置路由
+    // 去设置权限模块下路由为初始状态
+    // Vuex子模块怎么调用子模块的action 都没加锁的情况下 可以随意调用
+    // 不加命名空间的情况下的 所有的mutations和action都是挂在全局上的 所以可以直接调用
+    // 但是加了命名空间的子模块 怎么调用另一个加了命名空间的子模块的mutations
+    // 加了命名空间的context指的不是全局的context
+    // mutations名称 载荷 payload 第三个参数  { root: true } 调用根级的mutations或者action
+    context.commit('permission/setRoutes', [], { root: true })
   }
 }
 export default {
