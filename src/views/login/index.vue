@@ -1,14 +1,7 @@
 <template>
   <div class="login-container">
-    <el-form
-      ref="loginForm"
-      :model="loginForm"
-      :rules="loginRules"
-      class="login-form"
-      auto-complete="on"
-      label-position="left"
-    >
-      <!-- 放置标题图片 @是设置的别名-->
+    <el-form ref="loginForm" :model="loginForm" :rules="loginRules" class="login-form" auto-complete="on" label-position="left">
+
       <div class="title-container">
         <h3 class="title">
           <img src="@/assets/common/login-logo.png" alt="">
@@ -20,10 +13,10 @@
           <svg-icon icon-class="user" />
         </span>
         <el-input
-          ref="mobile"
+          ref="username"
           v-model="loginForm.mobile"
-          placeholder="手机号码"
-          name="mobile"
+          placeholder="请输入手机号"
+          name="username"
           type="text"
           tabindex="1"
           auto-complete="on"
@@ -34,31 +27,30 @@
         <span class="svg-container">
           <svg-icon icon-class="password" />
         </span>
+        <!--
+          <div>
+            <input />
+          </div>
+
+         -->
         <el-input
           :key="passwordType"
           ref="password"
           v-model="loginForm.password"
           :type="passwordType"
-          placeholder="密码"
+          placeholder="请输入密码"
           name="password"
           tabindex="2"
           auto-complete="on"
           @keyup.enter.native="handleLogin"
         />
+        <!-- enter是按键的修饰符  native也是修饰符 -->
         <span class="show-pwd" @click="showPwd">
-          <svg-icon
-            :icon-class="passwordType === 'password' ? 'eye' : 'eye-open'"
-          />
+          <svg-icon :icon-class="passwordType === 'password' ? 'eye' : 'eye-open'" />
         </span>
       </el-form-item>
 
-      <el-button
-        :loading="loading"
-        class="loginBtn"
-        type="primary"
-        style="width: 100%; margin-bottom: 30px"
-        @click.native.prevent="handleLogin"
-      >Login</el-button>
+      <el-button class="loginBtn" :loading="loading" type="primary" style="width:100%;margin-bottom:30px;" @click.native.prevent="handleLogin">登录</el-button>
 
       <div class="tips">
         <span style="margin-right:20px;">账号: 13800000002</span>
@@ -70,19 +62,19 @@
 
 <script>
 import { validMobile } from '@/utils/validate'
-import { mapActions } from 'vuex' // 引入vuex的辅助函数
-
+import { mapActions } from 'vuex'
 export default {
   name: 'Login',
   data() {
-    // 自定义校验函数
     const validateMobile = (rule, value, callback) => {
-      if (validMobile(value)) {
-        // 如果通过 直接执行callback
-        callback()
-      } else {
-        callback(new Error('手机号格式不正确'))
-      }
+      // 校验成功 callback()
+      // 校验失败 callback(new Error("错误信息"))
+      // if (!validMobile(value)) {
+      //   callback(new Error('手机号不正确'))
+      // } else {
+      //   callback()
+      // }
+      validMobile(value) ? callback() : callback(new Error('手机号格式不正确'))
     }
     return {
       loginForm: {
@@ -90,11 +82,13 @@ export default {
         password: '123456'
       },
       loginRules: {
+        // trigger 校验的触发方式 blur/change
+        // 自定义函数
         mobile: [{ required: true, trigger: 'blur', message: '手机号不能为空' }, {
           validator: validateMobile, trigger: 'blur'
         }],
         password: [{ required: true, trigger: 'blur', message: '密码不能为空' }, {
-          min: 6, max: 16, message: '密码的长度在6-16位之间 ', trigger: 'blur'
+          trigger: 'blur', min: 6, max: 16, message: '密码长度为6-16位之间'
         }]
       },
       loading: false,
@@ -111,6 +105,7 @@ export default {
     }
   },
   methods: {
+    ...mapActions(['user/login']), // 引入方法
     showPwd() {
       if (this.passwordType === 'password') {
         this.passwordType = ''
@@ -122,12 +117,12 @@ export default {
       })
     },
     handleLogin() {
+      // 表单的手动校验
       this.$refs.loginForm.validate(async isOK => {
         if (isOK) {
           try {
             this.loading = true
             // 只有校验通过了 我们才去调用action
-            // 使用了命名空间 无法直接调用login 所以使用[]调用
             await this['user/login'](this.loginForm)
             // 应该登录成功之后
             // async标记的函数实际上一个promise对象
@@ -141,8 +136,9 @@ export default {
           }
         }
       })
-    },
-    ...mapActions(['user/login'])
+      // ref 可以获取一个元素的dom对象
+      // ref作用到组件的上的时候 可以获取该组件的实例  this
+    }
   }
 }
 </script>
@@ -151,8 +147,8 @@ export default {
 /* 修复input 背景不协调 和光标变色 */
 /* Detail see https://github.com/PanJiaChen/vue-element-admin/pull/927 */
 
-$bg: #283443;
-$light_gray: #fff;
+$bg:#283443;
+$light_gray: #68b0fe;  // 将输入框颜色改成蓝色
 $cursor: #fff;
 
 @supports (-webkit-mask: none) and (not (cater-color: $cursor)) {
@@ -163,6 +159,8 @@ $cursor: #fff;
 
 /* reset element-ui css */
 .login-container {
+   background-image: url('~@/assets/common/login.jpg');
+   background-position: center;
   .el-input {
     display: inline-block;
     height: 47px;
@@ -191,11 +189,9 @@ $cursor: #fff;
     border-radius: 5px;
     color: #454545;
   }
-
-   .el-form-item__error {
+ .el-form-item__error {
     color: #fff
   }
-
   .loginBtn {
   background: #407ffe;
   height: 64px;
@@ -206,16 +202,15 @@ $cursor: #fff;
 </style>
 
 <style lang="scss" scoped>
-$bg: #2d3a4b;
-$dark_gray: #889aa4;
-$light_gray: #eee;
+$bg:#2d3a4b;
+$dark_gray:#889aa4;
+$light_gray:#eee;
 
 .login-container {
   min-height: 100%;
   width: 100%;
-  // 如需要在样式表中使用**`@`**别名的时候，需要在@前面加上一个**`~`**符号，否则不识别
-  background-image: url("~@/assets/common/login.jpg"); // 设置背景图片
-  background-position: center; // 将图片位置设置为充满整个屏幕npm
+  background-color: $bg;
+  overflow: hidden;
 
   .login-form {
     position: relative;

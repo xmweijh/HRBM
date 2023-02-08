@@ -115,6 +115,7 @@
 
 <script>
 import { getRoleList, getCompanyInfo, deleteRole, getRoleDetail, updateRole, addRole, assignPerm } from '@/api/setting'
+import { getPermissionList } from '@/api/permission'
 import { tranListToTreeData } from '@/utils'
 import { mapGetters } from 'vuex'
 export default {
@@ -216,7 +217,7 @@ export default {
     // 弹出层
     // 获取权限点数据 在点击的时候调用 获取权限点数据
     async assignPerm(id) {
-      this.permData = tranListToTreeData('0') // 转化list到树形数据
+      this.permData = tranListToTreeData(await getPermissionList(), '0') // 转化list到树形数据
       this.roleId = id
       // 应该去获取 这个id的 权限点
       // 有id 就可以 id应该先记录下来
